@@ -7,10 +7,12 @@ initializer, or by ussing one of its pre-existing logging methods, such as `info
 `warning(_:)`.
 
 ```swift
-let logger = Log(level: .notice, prints: true)
+let logger = Log(level: .info, prints: true)
 logger.log("A message.")
+
 // Or...
-Log.notice("A message.")
+
+Log.info("A message.")
 ```
 
 You can also create your own custom log destinations, using one of the `LogDestination`
