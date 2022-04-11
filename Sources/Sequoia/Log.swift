@@ -32,7 +32,7 @@ public struct Log {
   }()
   
   @usableFromInline
-  static let lock = Lock()
+  static let queue = DispatchQueue(label: "Sequoia_Log")
   
   // MARK: - Instance Properties
   
@@ -86,21 +86,83 @@ public struct Log {
   
   // MARK: - Instance Methods
   
+  @usableFromInline
+  func _log<M: ExpressibleByLogMessageLiteral>(_ message: M) {
+    if prints {
+      print(destination.consoleTag.tagValue + " " + message.stringValue)
+    }
+    if destination.logsToFile {
+      let message = Self.formatter.string(from: .init()) + " " + message.stringValue
+      destination.contents.append(message + "\n")
+    }
+  }
+  
+  /// Logs a message asynchronously.
+  ///
+  /// The logger, depending on its settings, will print a message to the console or
+  /// terminal, then append the message to the contents of the corresponding log file.
+  @inlinable
+  public func logAsync<M: ExpressibleByLogMessageLiteral>(_ message: M) {
+    Self.queue.async {
+      _log(message)
+    }
+  }
+  
+  /// Logs a message asynchronously.
+  ///
+  /// The logger, depending on its settings, will print a message to the console or
+  /// terminal, then append the message to the contents of the corresponding log file.
+  @inlinable
+  public func logAsync(_ message: String) {
+    logAsync(LogMessage(message))
+  }
+  
+  /// Logs a message asynchronously.
+  ///
+  /// The logger, depending on its settings, will print a message to the console or
+  /// terminal, then append the message to the contents of the corresponding log file.
+  @inlinable
+  public func logAsync(_ message: Any) {
+    logAsync(LogMessage(message))
+  }
+  
+  /// Logs a message synchronously.
+  ///
+  /// The logger, depending on its settings, will print a message to the console or
+  /// terminal, then append the message to the contents of the corresponding log file.
+  @inlinable
+  public func logSync<M: ExpressibleByLogMessageLiteral>(_ message: M) {
+    Self.queue.sync {
+      _log(message)
+    }
+  }
+  
+  /// Logs a message synchronously.
+  ///
+  /// The logger, depending on its settings, will print a message to the console or
+  /// terminal, then append the message to the contents of the corresponding log file.
+  @inlinable
+  public func logSync(_ message: String) {
+    logSync(LogMessage(message))
+  }
+  
+  /// Logs a message synchronously.
+  ///
+  /// The logger, depending on its settings, will print a message to the console or
+  /// terminal, then append the message to the contents of the corresponding log file.
+  @inlinable
+  public func logSync(_ message: Any) {
+    logSync(LogMessage(message))
+  }
+  
   /// Logs a message.
   ///
   /// The logger, depending on its settings, will print a message to the console or
   /// terminal, then append the message to the contents of the corresponding log file.
   @inlinable
+  @available(*, deprecated, message: "Use 'logAsync(_:)' or 'logSync(_:)' instead.")
   public func log<M: ExpressibleByLogMessageLiteral>(_ message: M) {
-    if prints {
-      print(destination.consoleTag.tagValue + " " + message.stringValue)
-    }
-    if destination.logsToFile {
-      Self.lock.synchronize {
-        let message = Self.formatter.string(from: .init()) + " " + message.stringValue
-        destination.contents.append(message + "\n")
-      }
-    }
+    logAsync(message)
   }
   
   /// Logs a message.
@@ -109,6 +171,7 @@ public struct Log {
   /// console or terminal, and then append the message to the contents of
   /// the corresponding log file.
   @inlinable
+  @available(*, deprecated, message: "Use 'logAsync(_:)' or 'logSync(_:)' instead.")
   public func log(_ message: String) {
     log(LogMessage(message))
   }
@@ -119,6 +182,7 @@ public struct Log {
   /// console or terminal, and then append the message to the contents of
   /// the corresponding log file.
   @inlinable
+  @available(*, deprecated, message: "Use 'logAsync(_:)' or 'logSync(_:)' instead.")
   public func log(_ value: Any) {
     log(LogMessage(value))
   }
@@ -139,7 +203,7 @@ extension Log {
   /// - Parameter message: The message to log.
   @inlinable
   public static func console<M: ExpressibleByLogMessageLiteral>(_ message: M) {
-    _console.log(message)
+    _console.logAsync(message)
   }
   
   /// A log for console-only messages.
@@ -185,7 +249,7 @@ extension Log {
   /// - Parameter message: The message to log.
   @inlinable
   public static func debug<M: ExpressibleByLogMessageLiteral>(_ message: M) {
-    _debug.log(message)
+    _debug.logAsync(message)
   }
   
   /// A log for debug messages.
@@ -233,7 +297,7 @@ extension Log {
   /// - Parameter message: The message to log.
   @inlinable
   public static func info<M: ExpressibleByLogMessageLiteral>(_ message: M) {
-    _info.log(message)
+    _info.logAsync(message)
   }
   
   /// A log for general information.
@@ -282,7 +346,7 @@ extension Log {
   /// - Parameter message: The message to log.
   @inlinable
   public static func notice<M: ExpressibleByLogMessageLiteral>(_ message: M) {
-    _notice.log(message)
+    _notice.logAsync(message)
   }
   
   /// A log for information that requires more attention than the `info` level,
@@ -333,7 +397,7 @@ extension Log {
   /// - Parameter message: The message to log.
   @inlinable
   public static func warning<M: ExpressibleByLogMessageLiteral>(_ message: M) {
-    _warning.log(message)
+    _warning.logAsync(message)
   }
   
   /// A log for warnings.
@@ -383,7 +447,7 @@ extension Log {
   /// - Parameter message: The message to log.
   @inlinable
   public static func error<M: ExpressibleByLogMessageLiteral>(_ message: M) {
-    _error.log(message)
+    _error.logAsync(message)
   }
   
   /// A log for errors.
@@ -432,7 +496,7 @@ extension Log {
   /// - Parameter message: The message to log.
   @inlinable
   public static func critical<M: ExpressibleByLogMessageLiteral>(_ message: M) {
-    _critical.log(message)
+    _critical.logAsync(message)
   }
   
   /// A log for critical conditions.
@@ -490,7 +554,7 @@ extension Log {
     _ message: M,
     stopExecution: Bool = true
   ) {
-    _fatal.log(message)
+    _fatal.logSync(message)
     if stopExecution {
       fatalError(message.stringValue)
     }
@@ -553,7 +617,7 @@ extension Log {
   /// - Parameter message: The message to log.
   @inlinable
   public static func fatal<M: ExpressibleByLogMessageLiteral>(_ message: M) -> Never {
-    _fatal.log(message)
+    _fatal.logSync(message)
     fatalError(message.stringValue)
   }
   
@@ -610,7 +674,7 @@ extension Log {
   ///   - message: The message to log.
   @inlinable
   public static func silent<M: ExpressibleByLogMessageLiteral>(level: LogLevel, _ message: M) {
-    _silent(level: level).log(message)
+    _silent(level: level).logAsync(message)
   }
   
   /// A log for file-only messages.
