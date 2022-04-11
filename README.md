@@ -12,7 +12,7 @@ import PackageDescription
 let package = Package(
     name: "PackageName",
     dependencies: [
-        .package(url: "https://github.com/jordanbaird/Sequoia", from: "0.0.1")
+        .package(url: "https://github.com/jordanbaird/Sequoia", from: "0.0.2")
     ],
     targets: [
         .target(
